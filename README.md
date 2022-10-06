@@ -61,6 +61,10 @@ library(susogrdframe)
 susogrdframe::run_app()
 ```
 
+In case R prompts you to update/install any addtional packages, please
+confirm, ideally with update all. This may take a while, however these
+packages are required to run the application.
+
 ## Help for runtime parameters
 
 To learn about the individual run time parameters, please run the
