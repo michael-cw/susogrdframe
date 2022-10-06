@@ -3,3 +3,7 @@
 .Rdata
 .httr-oauth
 .DS_Store
+susogrdframe.Rproj
+CREDENTIALS!!REMOVE.R
+tests
+dev

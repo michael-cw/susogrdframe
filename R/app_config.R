@@ -9,7 +9,7 @@
 #'
 #' @noRd
 app_sys <- function(...) {
-  system.file(..., package = "test1")
+  system.file(..., package = "susogrdframe")
 }
 
 

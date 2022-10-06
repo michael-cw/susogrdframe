@@ -1,8 +1,8 @@
 default:
-  golem_name: test1
+  golem_name: susogrdframe
   golem_version: 0.0.0.9000
   app_prod: no
 production:
   app_prod: yes
 dev:
-  golem_wd: !expr here::here()
+  golem_wd: /home/mcw_rstudio/golem_tester/susogrdframe

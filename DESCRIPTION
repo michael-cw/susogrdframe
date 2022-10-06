@@ -1,13 +1,49 @@
-Package: test1
-Title: PKG_TITLE
-Version: 0.0.0.9000
-Authors@R: person('AUTHOR_FIRST', 'AUTHOR_LAST', email = 'AUTHOR@MAIL.COM', role = c('cre', 'aut'))
-Description: PKG_DESC.
+Package: susogrdframe
+Title: Support application for grid sampling (replacment)
+Version: 0.1.1
+Authors@R: 
+    person("Michael", "Wild", , "mwild@worldbank.org", role = c("cre", "aut"))
+Description: Creates replacment files including spatial resources for
+    Survey Solutions data collection for which the original sampling
+    process has been done with Survey Solutions.
 License: MIT + file LICENSE
 Imports: 
+    basemaps,
     config (>= 0.3.1),
     golem (>= 0.3.3),
-    shiny (>= 1.7.1)
+    shiny (>= 1.7.1),
+    data.table,
+    DBI,
+    dplyr,
+    DT,
+    fasterize,
+    grDevices,
+    httr,
+    jsonlite,
+    lwgeom,
+    magick,
+    magrittr,
+    mapdeck,
+    raster,
+    readr,
+    RgoogleMaps,
+    rlang,
+    rpostgis,
+    RPostgres,
+    sf,
+    shinyalert,
+    shinycssloaders,
+    shinyjs,
+    stars,
+    stringr,
+    terra,
+    zip
+Suggests: 
+    cluster,
+    mapview,
+    rmapshaper,
+    testthat (>= 3.0.0)
+Config/testthat/edition: 3
 Encoding: UTF-8
 LazyData: true
-RoxygenNote: 7.1.1
+RoxygenNote: 7.2.1
