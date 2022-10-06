@@ -44,7 +44,6 @@ app_server <- function(input, output, session) {
   observe({
     ##############################
     ## base map is worldmap
-    key<-golem::get_golem_options("KEY")
     # print(key)
     # #shiny::validate(need(!is.null(input$lat), message = F))
     if(!exists("input$lat")) {
@@ -86,11 +85,16 @@ app_server <- function(input, output, session) {
   })
   # 2.2 LIST Shape files in Data base
   flSHP<-reactive({
-    tab<-writeSFtoDB(dbname = golem::get_golem_options("pgdbname"),
-                     host = golem::get_golem_options("pghost"),
-                     user = golem::get_golem_options("pguser"),
-                     password = golem::get_golem_options("pgpass"),
-                     listTables = T)
+    tab<-tryCatch(
+      {writeSFtoDB(dbname = golem::get_golem_options("pgdbname"),
+                  host = golem::get_golem_options("pghost"),
+                  user = golem::get_golem_options("pguser"),
+                  password = golem::get_golem_options("pgpass"),
+                  listTables = T)},
+      error = function(e){showNotification("ATTENTION: No connection to the dabase!",
+                                           duration = 30, id = "nopg",
+                                           type = "warning"); return(NULL)}
+    )
     return(tab)
   })
   # 2.3. SHOW SELECTION table for shapes
