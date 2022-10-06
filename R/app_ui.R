@@ -13,7 +13,8 @@ app_ui <- function(request) {
     # Your application UI logic
     fluidPage(
       shinyjs::useShinyjs(),
-      shinyalert::useShinyalert(),
+      ## shiny alert conditional on version
+      if (packageVersion("shinyalert")<3) shinyalert::useShinyalert(),
       ##    Title BAR (logo, bg color font color etc)
 
       #mapdeck::mapdeck_dependencies(),
