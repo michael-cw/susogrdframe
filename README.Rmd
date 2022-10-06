@@ -13,43 +13,61 @@ knitr::opts_chunk$set(
 )
 ```
 
-# test1
+# The susogrdframe package
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-The goal of test1 is to ...
+This is a repository for the Joint Development Center - Survey Solutions Replacement Application to support survey sampling and implementation when using Spatial Resources for the sampling Process together with Survey Solutions Computer Assisted Survey System (CASS).
+
+The Survey Solutions CASS allows to use spatial resources in the data collection operations, these spatial resources can be boundary files (of a particular area) in the form of an (ESRI) shape file, as well as background maps in the form of either Tile map packages (.tpk) or geo-tif files (.tif).
+
+For further details on how to use spatial resources in Survey Solutions please see here: 
+
+* https://docs.mysurvey.solutions/headquarters/svymanage/shapefile-maps/
+
+and here:
+
+* https://docs.mysurvey.solutions/headquarters/svymanage/map-formats/
+
+All its modules come with a user interface and are based on R's shiny framework. For the visualization of the sample it uses the https://deck.gl framework implemented through the mapdeck package.
+
 
 ## Installation
 
-You can install the released version of test1 from [CRAN](https://CRAN.R-project.org) with:
+* Install R: https://cran.r-project.org/mirrors.html (version 4.1.1 or greater)
 
-``` r
-install.packages("test1")
+* Install R Studio: https://rstudio.com/products/rstudio/download/ (version 1.2.5001-3 or newer)
+
+* Make sure the *devtools* package is installed, if not install it with *install.packages("devtools")*
+
+
+```{r install,eval=FALSE, echo=TRUE}
+devtools::install_github("michael-cw/susogrdframe")
+
 ```
 
-## Example
+## Start the application
 
-This is a basic example which shows you how to solve a common problem:
+Start R Studio and run the following commands:
 
-```{r example}
-library(test1)
-## basic example code
+
+```{r start, eval=FALSE, echo=TRUE}
+library(susogrdframe)
+susogrdframe::run_app()
+
 ```
 
-What is special about using `README.Rmd` instead of just `README.md`? You can include R chunks like so:
 
-```{r cars}
-summary(cars)
+## Help for runtime parameters
+
+To learn about the individual run time parameters, please run the following commands:
+
+
+```{r help, eval=FALSE, echo=TRUE}
+?susogrdframe::run_app
+
 ```
 
-You'll still need to render `README.Rmd` regularly, to keep `README.md` up-to-date. `devtools::build_readme()` is handy for this. You could also use GitHub Actions to re-render `README.Rmd` every time you push. An example workflow can be found here: <https://github.com/r-lib/actions/tree/master/examples>.
-
-You can also embed plots, for example:
-
-```{r pressure, echo = FALSE}
-plot(pressure)
-```
-
-In that case, don't forget to commit and push the resulting figure files, so they display on GitHub and CRAN.
+This will give you all the information required. The most important component is the mapbox key for the base map used in the application as well as the Postgres Database address and credentials in case you are using one.
