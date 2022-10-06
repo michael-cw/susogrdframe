@@ -63,7 +63,9 @@ susogrdframe::run_app()
 
 In case R prompts you to update/install any addtional packages, please
 confirm, ideally with update all. This may take a while, however these
-packages are required to run the application.
+packages are required to run the application. **In case you are asked to
+install packages from source, please refuse, as this may take very long
+in particular in windows environments.**
 
 ## Help for runtime parameters
 
