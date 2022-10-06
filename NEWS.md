@@ -1,3 +1,3 @@
-# test1 0.0.0.9000
+# susogrdfram 0.1.1
 
-* Added a `NEWS.md` file to track changes to the package.
+* Initial commit of the application. New release summaries will be shown here.
