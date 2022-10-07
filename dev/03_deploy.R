@@ -10,6 +10,8 @@
 ######################################
 #### CURRENT FILE: DEPLOY SCRIPT #####
 ######################################
+## Create readme
+devtools::build_readme()
 
 # Test your app
 
