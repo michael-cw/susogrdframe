@@ -44,13 +44,27 @@ framework. For the visualization of the sample it uses the
     (version 1.2.5001-3 or newer)
 
   - Make sure the *devtools* package is installed, if not install it
-    with *install.packages(“devtools”)*
+    with:
+
+<!-- end list -->
+
+``` r
+install.packages("devtools")
+```
+
+  - After that install the actual package:
 
 <!-- end list -->
 
 ``` r
 devtools::install_github("michael-cw/susogrdframe")
 ```
+
+In case R prompts you to update/install any addtional packages, please
+confirm, ideally with update all. This may take a while, however these
+packages are required to run the application. **In case you are asked to
+install packages from source, please refuse, as this may take very long
+in particular in windows environments.**
 
 ## Start the application
 
@@ -60,12 +74,6 @@ Start R Studio and run the following commands:
 library(susogrdframe)
 susogrdframe::run_app()
 ```
-
-In case R prompts you to update/install any addtional packages, please
-confirm, ideally with update all. This may take a while, however these
-packages are required to run the application. **In case you are asked to
-install packages from source, please refuse, as this may take very long
-in particular in windows environments.**
 
 ## Help for runtime parameters
 

@@ -40,13 +40,23 @@ All its modules come with a user interface and are based on R's shiny framework.
 
 * Install R Studio: https://rstudio.com/products/rstudio/download/ (version 1.2.5001-3 or newer)
 
-* Make sure the *devtools* package is installed, if not install it with *install.packages("devtools")*
+* Make sure the *devtools* package is installed, if not install it with:
 
+```{r devtoolsinst,eval=FALSE, echo=TRUE}
+install.packages("devtools")
+
+```
+
+* After that install the actual package:
 
 ```{r install,eval=FALSE, echo=TRUE}
 devtools::install_github("michael-cw/susogrdframe")
 
 ```
+
+In case R prompts you to update/install any addtional packages, please confirm, ideally with update all. This may take a while, however these packages are required to run the application. **In case you are asked to install packages from source, please refuse, as this may take very long in particular in windows environments.**
+
+
 
 ## Start the application
 
@@ -58,8 +68,6 @@ library(susogrdframe)
 susogrdframe::run_app()
 
 ```
-
-In case R prompts you to update/install any addtional packages, please confirm, ideally with update all. This may take a while, however these packages are required to run the application. **In case you are asked to install packages from source, please refuse, as this may take very long in particular in windows environments.**
 
 
 ## Help for runtime parameters
