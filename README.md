@@ -1,6 +1,8 @@
 
 <!-- README.md is generated from README.Rmd. Please edit that file -->
 
+<a href='https://docs.mysurvey.solutions/'><img src="man/img/susospatial.png" align="right" height="139"/></a>
+
 # The susogrdframe package
 
 <!-- badges: start -->
@@ -21,13 +23,11 @@ background maps in the form of either Tile map packages (.tpk) or
 geo-tif files (.tif).
 
 For further details on how to use spatial resources in Survey Solutions
-please see
-    here:
+please see here:
 
   - <https://docs.mysurvey.solutions/headquarters/svymanage/shapefile-maps/>
 
-and
-    here:
+and here:
 
   - <https://docs.mysurvey.solutions/headquarters/svymanage/map-formats/>
 
