@@ -15,7 +15,7 @@
 #' @import httr
 #' @importFrom jsonlite fromJSON
 #' @import sf
-#' @import lwgeom
+#' @importFrom lwgeom st_split
 #' @noRd
 
 loadTPK_SF<-function(input.shape=NULL, mapLEVELS="1-19", arc.user = NULL, arc.pw = NULL, serviceURL=NULL,

@@ -1,9 +1,9 @@
 #' helpers
 #'
-#' @description A utils function
+#' @description Utility functions, CSS style helpers, DT table formatters,
+#'   and cross-cutting raster helpers used throughout the application.
 #'
-#' @return The return value, if any, from executing the utility.
-#'
+#' @importFrom magrittr %>%
 #' @noRd
 
 ## Global Variables with no visible binding, i.e data.table, dplyr etc.
@@ -58,20 +58,51 @@ crs_wkt<-c(
 ## 1. General
 smTab<-list(dom="t")
 
-##  2. Info table (no selection, first column is Names)
-infoTable<-.%>% DT::formatStyle(1,  color = '#FFFFFF',
-                            backgroundColor = '#0d47a1',
-                            fontWeight = 'bold')
+##  2. Info table formatters (plain functions for Roxygen compatibility)
 
-inputTable<-.%>% DT::formatStyle(2,
-                             fontWeight = 'bold',
-                             textAlign = 'center')
+#' Format an info-table DT object
+#'
+#' Applies a blue-on-dark-blue header style to the first column of a
+#' `DT::datatable()` output.
+#'
+#' @param dt A `DT::datatable` object.
+#' @return The formatted datatable.
+#' @noRd
+infoTable <- function(dt) {
+  DT::formatStyle(dt, 1,
+                  color           = '#FFFFFF',
+                  backgroundColor = '#0d47a1',
+                  fontWeight      = 'bold')
+}
 
+#' Format an input-table DT object
+#'
+#' Bolds and centres values in the second column of a `DT::datatable()`.
+#'
+#' @param dt A `DT::datatable` object.
+#' @return The formatted datatable.
+#' @noRd
+inputTable <- function(dt) {
+  DT::formatStyle(dt, 2,
+                  fontWeight = 'bold',
+                  textAlign  = 'center')
+}
 
-##  3. View table (no selcetion, all columns the same)
-viewTable<-.%>% DT::formatStyle(1,  color = '#FFFFFF',
-                            backgroundColor = '#33D2FF',
-                            fontWeight = 'bold')
+##  3. View table
+
+#' Format a view-table DT object
+#'
+#' Applies a cyan header style to the first column of a `DT::datatable()`.
+#'
+#' @param dt A `DT::datatable` object.
+#' @return The formatted datatable.
+#' @noRd
+viewTable <- function(dt) {
+  DT::formatStyle(dt, 1,
+                  color           = '#FFFFFF',
+                  backgroundColor = '#33D2FF',
+                  fontWeight      = 'bold')
+}
 
 # ###############################
 ## SET to 20gb for future parallel

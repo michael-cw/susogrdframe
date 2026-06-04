@@ -2,9 +2,11 @@
 % Please edit documentation in R/run_app.R
 \name{run_app}
 \alias{run_app}
-\title{Run the Replacement Application}
+\title{Run the Grid Frame Replacement Application}
 \usage{
 run_app(
+  data_backend = c("postgres", "local"),
+  local_dir = NULL,
   bgmaptype = "streets",
   mapboxkey = NULL,
   pghost = "localhost",
@@ -12,7 +14,7 @@ run_app(
   pgpass = NULL,
   pgdbname = "spatsampdata",
   filepath = "susomaps",
-  susomapcrs = 3857,
+  susomapcrs = 3857L,
   onStart = NULL,
   options = list(),
   enableBookmarking = NULL,
@@ -21,50 +23,90 @@ run_app(
 )
 }
 \arguments{
-\item{bgmaptype}{the type of mapbox map, one of: "dark", "light", "outdoors",
-"streets", "satellite", "satellite-streets".}
+\item{data_backend}{Character scalar, one of `"postgres"` (default) or
+`"local"`.  Selects the storage backend for reading/writing frame files.}
 
-\item{mapboxkey}{mapbox key required for your basemap.}
+\item{local_dir}{Character scalar — absolute path to the local data root
+directory.  Required (and only used) when `data_backend = "local"`.
+Sub-directories `shapefiles/` and `rasterfiles/` are created inside
+this path if they do not already exist.}
 
-\item{pghost}{Postgres host address, default is localhost}
+\item{bgmaptype}{Character scalar — Mapbox map style passed to
+`mapdeck::mapdeck_style()`.  One of `"dark"`, `"light"`,
+`"outdoors"`, `"streets"`, `"satellite"`, or `"satellite-streets"`.
+Default: `"streets"`.}
 
-\item{pguser}{Postgres user.}
+\item{mapboxkey}{Character scalar — Mapbox API key required for the
+Mapbox basemap style.  Optional; if `NULL` the application will warn the
+user that no basemap key is available.  See `?mapdeck::mapdeck` for
+details.}
 
-\item{pgpass}{Postgres password.}
+\item{pghost}{Character scalar — PostgreSQL host address.  Default:
+`"localhost"`.  Ignored when `data_backend = "local"`.}
 
-\item{pgdbname}{Postgress database name.}
+\item{pguser}{Character scalar — PostgreSQL user name.  Default: `"shiny"`.
+Ignored when `data_backend = "local"`.}
 
-\item{filepath}{Name of the directory where the files for the background maps are stored during processing. If
-this folder does not exists, it will be created in the current working directory.}
+\item{pgpass}{Character scalar — PostgreSQL password.  Default: `NULL`.
+Ignored when `data_backend = "local"`.}
 
-\item{susomapcrs}{Coordinate reference system for fieldwork maps. Must be compatible with Survey Solutions. If you are
-not sure, leave it at the default 3857, web-mercator.}
+\item{pgdbname}{Character scalar — PostgreSQL database name.  Default:
+`"spatsampdata"`.  Ignored when `data_backend = "local"`.}
 
-\item{onStart}{A function that will be called before the app is actually run.
-This is only needed for \code{shinyAppObj}, since in the \code{shinyAppDir}
-case, a \code{global.R} file can be used for this purpose.}
+\item{filepath}{Character scalar — name of the working sub-directory used
+to cache intermediate basemap files (e.g.\ static tiles).  Created in the
+current working directory if it does not exist.  Default: `"susomaps"`.}
 
-\item{options}{Named options that should be passed to the \code{runApp} call
-(these can be any of the following: "port", "launch.browser", "host", "quiet",
-"display.mode" and "test.mode"). You can also specify \code{width} and
-\code{height} parameters which provide a hint to the embedding environment
-about the ideal height/width for the app.}
+\item{susomapcrs}{Integer — EPSG code of the coordinate reference system
+used for the Survey Solutions fieldwork maps.  Must be a CRS accepted by
+Survey Solutions.  Default: `3857` (Web Mercator).}
 
-\item{enableBookmarking}{Can be one of \code{"url"}, \code{"server"}, or
-\code{"disable"}. The default value, \code{NULL}, will respect the setting from
-any previous calls to  \code{\link[shiny:enableBookmarking]{enableBookmarking()}}. See \code{\link[shiny:enableBookmarking]{enableBookmarking()}}
-for more information on bookmarking your app.}
+\item{onStart}{A function called before the app starts.  Passed directly
+to `shiny::shinyApp()`.}
 
-\item{uiPattern}{A regular expression that will be applied to each \code{GET}
-request to determine whether the \code{ui} should be used to handle the
-request. Note that the entire request path must match the regular
-expression in order for the match to be considered successful.}
+\item{options}{Named list of options passed to `shiny::shinyApp()`.}
 
-\item{...}{arguments to pass to golem_opts.
-See `?golem::get_golem_options` for more details.}
+\item{enableBookmarking}{Passed to `shiny::shinyApp()`.}
+
+\item{uiPattern}{Passed to `shiny::shinyApp()`.}
+
+\item{...}{Additional arguments forwarded to `golem::with_golem_options()`.}
+}
+\value{
+A Shiny app object (invisibly).  The browser is opened
+  automatically via `options = list(launch.browser = TRUE)`.
 }
 \description{
-This will start the Grid Replacment Application which is part of the Survey Solutions Spatial
-Sampling toolbox. To use it, make sure you have access to the frame files generated by the Spatial Sampling
-application.
+Launches the Survey Solutions Grid Frame Replacement Shiny application.
+The application supports two **data backends** for reading and writing
+geospatial frame files:
+
+* **`"postgres"`** (default) — data is stored in and retrieved from a
+  PostgreSQL/PostGIS database.  All `pg*` arguments are required.
+* **`"local"`** — data is read from and written to a local directory.
+  The directory must contain two sub-folders:
+  * `shapefiles/` — ESRI Shapefiles (`.shp` + sidecar files).
+  * `rasterfiles/` — GeoTIFF rasters (`.tif`).
+  Both sub-directories are created automatically if they do not exist.
+  The `pg*` arguments are ignored in this mode.
+}
+\examples{
+\dontrun{
+## --- PostgreSQL backend (default) ---
+run_app(
+  mapboxkey = Sys.getenv("MAPBOX_KEY"),
+  pghost    = "localhost",
+  pguser    = "shiny",
+  pgpass    = Sys.getenv("PG_PASS"),
+  pgdbname  = "spatsampdata"
+)
+
+## --- Local directory backend ---
+run_app(
+  data_backend = "local",
+  local_dir    = "~/my_frame_data",
+  mapboxkey    = Sys.getenv("MAPBOX_KEY")
+)
+}
+
 }

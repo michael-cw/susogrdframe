@@ -15,71 +15,184 @@ knitr::opts_chunk$set(
 
 <a href='https://docs.mysurvey.solutions/'><img src="man/img/susospatial.png" align="right" height="139"/></a>
 
-# The susogrdframe package
+# susogrdframe — Grid Frame Replacement Application
 
 <!-- badges: start -->
 [![Lifecycle: experimental](https://img.shields.io/badge/lifecycle-experimental-orange.svg)](https://lifecycle.r-lib.org/articles/stages.html#experimental)
 <!-- badges: end -->
 
-This is a repository for the Joint Development Center - Survey Solutions Replacement Application to support survey sampling and implementation when using Spatial Resources for the sampling Process together with Survey Solutions Computer Assisted Survey System (CASS).
+## Overview
 
-The Survey Solutions CASS allows to use spatial resources in the data collection operations, these spatial resources can be boundary files (of a particular area) in the form of an (ESRI) shape file, as well as background maps in the form of either Tile map packages (.tpk) or geo-tif files (.tif).
+`susogrdframe` is part of the **Survey Solutions Spatial Sampling Toolbox**, developed by the
+[Joint Development Center (JDC)](https://www.worldbank.org/en/programs/joint-development-center)
+at the World Bank. It provides a self-contained Shiny application that supports **replacement
+frame generation** for surveys that were sampled from a population-weighted spatial grid.
 
-For further details on how to use spatial resources in Survey Solutions please see here: 
+When a primary sampling unit (PSU) selected from a spatial grid needs to be replaced (e.g.
+because it is inaccessible), this application identifies valid adjacent replacement cells,
+packages the necessary spatial resources (boundary shapefiles, basemap tiles), and bundles
+them into a survey-ready download for the field team.
 
-* https://docs.mysurvey.solutions/headquarters/svymanage/shapefile-maps/
+### How it fits into the workflow
 
-and here:
+```
+Spatial Sampling App          susogrdframe
+─────────────────────         ──────────────────────────────────────
+1. Define study area     →    4. Load saved boundary + raster files
+2. Overlay raster grid   →    5. Select stratum & grid cell
+3. Draw PSU sample       →    6. Generate replacement resources
+                              7. Download ZIP for Survey Solutions
+```
 
-* https://docs.mysurvey.solutions/headquarters/svymanage/map-formats/
+### Key capabilities
 
-All its modules come with a user interface and are based on R's shiny framework. For the visualization of the sample it uses the https://deck.gl framework implemented through the mapdeck package.
+| Feature | Description |
+|---|---|
+| **Dual storage backend** | Read/write from a **PostgreSQL/PostGIS** database *or* a **local directory** — no database required for offline use |
+| **Interactive map** | Built on [deck.gl](https://deck.gl) via `mapdeck`, showing boundary layers, raster population grids, and selected cells in real time |
+| **Stratum-aware selection** | Boundary files can contain multiple strata; the app filters the raster grid to the selected stratum only |
+| **Segment splitting** | Optionally split a grid cell into 2 × 2, 3 × 3 or 4 × 4 sub-segments (useful for large PSUs) |
+| **Basemap packaging** | Attach an offline basemap to the download — supports ESRI World Imagery, OpenStreetMap, Mapbox, Bing, and ESRI Tile Packages (.tpk) |
+| **Survey Solutions output** | Produces a ZIP containing ESRI Shapefiles and a GPS coordinate file (centre + bounding rectangle) ready for direct upload to Survey Solutions |
 
+---
+
+## Prerequisites
+
+| Software | Minimum version | Link |
+|---|---|---|
+| R | 4.1.0 | <https://cran.r-project.org/mirrors.html> |
+| RStudio | 1.2.5001-3 | <https://rstudio.com/products/rstudio/download/> |
+| Mapbox API key | — | <https://account.mapbox.com/> (optional but recommended) |
+| PostgreSQL / PostGIS | 12 | <https://www.postgresql.org/> (only for the `postgres` backend) |
+
+---
 
 ## Installation
 
-* Install R: https://cran.r-project.org/mirrors.html (version 4.1.1 or greater)
+Install `devtools` if you have not done so already:
 
-* Install R Studio: https://rstudio.com/products/rstudio/download/ (version 1.2.5001-3 or newer)
-
-* Make sure the *devtools* package is installed, if not install it with:
-
-```{r devtoolsinst,eval=FALSE, echo=TRUE}
+```{r devtoolsinst, eval=FALSE, echo=TRUE}
 install.packages("devtools")
-
 ```
 
-* After that install the actual package:
+Then install `susogrdframe` from GitHub:
 
-```{r install,eval=FALSE, echo=TRUE}
+```{r install, eval=FALSE, echo=TRUE}
 devtools::install_github("michael-cw/susogrdframe")
-
 ```
 
-In case R prompts you to update/install any addtional packages, please confirm, ideally with update all. This may take a while, however these packages are required to run the application. **In case you are asked to install packages from source, please refuse, as this may take very long in particular in windows environments.**
+> **Note:** If R prompts you to update or install additional packages, confirm with
+> *Update All*. If asked to install packages from source, select *No* — binary
+> packages install much faster, especially on Windows.
 
+---
 
+## Quick start
 
-## Start the application
+### PostgreSQL backend (default)
 
-Start R Studio and run the following commands:
+Requires a running PostgreSQL/PostGIS instance that already contains the boundary
+and raster files generated by the Spatial Sampling Application.
 
-
-```{r start, eval=FALSE, echo=TRUE}
+```{r start_pg, eval=FALSE, echo=TRUE}
 library(susogrdframe)
-susogrdframe::run_app()
 
+run_app(
+  mapboxkey = Sys.getenv("MAPBOX_KEY"),   # optional but recommended
+  pghost    = "localhost",
+  pguser    = "shiny",
+  pgpass    = Sys.getenv("PG_PASS"),
+  pgdbname  = "spatsampdata"
+)
 ```
 
+### Local directory backend
 
-## Help for runtime parameters
+No database required. Place your files in the directory structure below and
+point `run_app()` at it.
 
-To learn about the individual run time parameters, please run the following commands:
+```
+my_frame_data/
+  shapefiles/     # ESRI Shapefiles (.shp + .dbf, .prj, .shx, ...)
+  rasterfiles/    # GeoTIFF population rasters (.tif)
+```
 
+```{r start_local, eval=FALSE, echo=TRUE}
+library(susogrdframe)
+
+run_app(
+  data_backend = "local",
+  local_dir    = "~/my_frame_data",     # sub-dirs created automatically
+  mapboxkey    = Sys.getenv("MAPBOX_KEY")
+)
+```
+
+---
+
+## Application workflow
+
+Once the application is running, follow these steps in the **Application Inputs** tab:
+
+1. **Load boundary file** — click *Show Existing Shape*, select a boundary layer,
+   and confirm.  The boundary is drawn on the interactive map.
+2. **Select stratification variable** — choose the column that defines strata
+   (e.g. district name or land-use type).
+3. **Select stratum** — filter the boundary to a single stratum.
+4. **Load raster file** — click *Show Existing Raster* and select the corresponding
+   population raster.  Optionally click *Show raster image* for a quick preview.
+5. **Create grid cells** — click *Create Grid Cells* to overlay the population-weighted
+   grid on the map.  Each cell is labelled with a unique `GRIDID`.
+6. **Select grid cell** — pick the cell that requires a replacement from the dropdown.
+   The selected cell is highlighted in red on the map.
+7. **Configure output** — choose whether to split the cell into sub-segments and
+   whether to attach an offline basemap.
+8. **Download resources** — click *Download Survey Resources* to generate and
+   download the ZIP package.
+
+---
+
+## Application settings
+
+Switch to the **Application Settings** tab to configure:
+
+* **Basemap service** — ESRI World Imagery, OSM, Mapbox, Bing, or ESRI Tile Package.
+  Mapbox and Bing require an API key.
+* **Survey Solutions API** — server URL and credentials for direct integration.
+* **Data Storage** — read-only panel showing the active backend (PostgreSQL or
+  Local Directory) and, in local mode, the resolved data root path.
+
+---
+
+## Runtime parameters
+
+Full documentation for all `run_app()` parameters is available in R:
 
 ```{r help, eval=FALSE, echo=TRUE}
 ?susogrdframe::run_app
-
 ```
 
-This will give you all the information required. The most important component is the mapbox key for the base map used in the application as well as the Postgres Database address and credentials in case you are using one.
+Key parameters at a glance:
+
+| Parameter | Default | Description |
+|---|---|---|
+| `data_backend` | `"postgres"` | `"postgres"` or `"local"` |
+| `local_dir` | `NULL` | Path to local data root (required when `data_backend = "local"`) |
+| `mapboxkey` | `NULL` | Mapbox API key for the interactive base map |
+| `bgmaptype` | `"streets"` | Mapbox style: `"dark"`, `"light"`, `"outdoors"`, `"streets"`, `"satellite"`, `"satellite-streets"` |
+| `pghost` | `"localhost"` | PostgreSQL host |
+| `pguser` | `"shiny"` | PostgreSQL user |
+| `pgpass` | `NULL` | PostgreSQL password |
+| `pgdbname` | `"spatsampdata"` | PostgreSQL database name |
+| `susomapcrs` | `3857` | Output CRS for Survey Solutions shapefiles (Web Mercator) |
+
+---
+
+## Further reading
+
+* Survey Solutions shapefile maps:
+  <https://docs.mysurvey.solutions/headquarters/svymanage/shapefile-maps/>
+* Survey Solutions map formats:
+  <https://docs.mysurvey.solutions/headquarters/svymanage/map-formats/>
+* deck.gl mapping library: <https://deck.gl>
+* mapdeck R package: <https://symbolixau.github.io/mapdeck/>
