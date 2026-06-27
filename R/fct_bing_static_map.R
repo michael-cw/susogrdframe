@@ -24,7 +24,7 @@
 #'
 #' @return A list of file pathes to the individual map files
 #'
-#' @importFrom basemaps basemap_stars
+#' @importFrom basemaps basemap_stars set_defaults
 #'
 #'
 #' @noRd
@@ -51,6 +51,13 @@ getStaticMapAsRaster<-function(shape = shape,
       fp<-file_path
     }
   }
+
+  ## Ensure the basemaps package internal tile cache directory exists.
+  ## On Windows, basemap_stars() fails with a "Failed to open .curltmp" error
+  ## if this sub-directory has not been created yet in the current R session.
+  bm_cache <- file.path(tempdir(), "basemaps")
+  if (!dir.exists(bm_cache)) dir.create(bm_cache, recursive = TRUE)
+  basemaps::set_defaults(map_dir = bm_cache)
 
   if(byShape){
     file_name<-shape %>%
@@ -160,70 +167,75 @@ getStaticMapAsRaster<-function(shape = shape,
     }
   } else {
 
-    file_name<-shape %>% dplyr::select(.data[[name_var]]) %>% st_set_geometry(NULL)
-    file_name<-file_name[1,1]
+    ## byShape = FALSE: use the overall shape extent (single output file)
+    file_name <- shape %>%
+      dplyr::select(.data[[name_var]]) %>%
+      sf::st_set_geometry(NULL)
+    file_name <- file_name[1, 1]
 
-    ## 2. package basemaps
-    ext<-shape %>% st_transform(4326) %>% st_bbox()
-    if(mapservice=="esri") {
-      ras3<-basemap_stars(ext = ext, map_service = "esri", map_type = "world_imagery")
-      write_stars(ras3, dsn = "./data/bingtest/esri_Lat9236Lon569.tif")
-    } else if(mapservice=="osm") {
-      ras4<-basemap_stars(ext = ext, map_service = "osm", map_type = "streets")
-      write_stars(ras4, dsn = "./data/bingtest/osm_str_Lat9236Lon569.tif")
-    } else if (mapservice=="mapbox"){
-      ras6<-basemap_stars(ext = ext, map_service = "mapbox", map_type = "hybrid", map_token = key)
-      write_stars(ras6, dsn = "./data/bingtest/mapbox_hybrid_Lat9236Lon569.tif")
-    } else if (mapservice=="bing")
-      ## 3. bing
-    ## 3.1 lat long mapbounds
-    ma<-paste(ext["ymin"], ext["xmin"], ext["ymax"], ext["xmax"], sep=",")
-    ## 3.1.1
-    res_px<-700
+    ## Bounding box for the entire shape
+    ext <- shape %>% sf::st_transform(4326) %>% sf::st_bbox()
 
-    ## 3.2. URL
-    url<-parse_url("https://dev.virtualearth.net")
-    url$path<-"/REST/v1/Imagery/Map/AerialWithLabels"
+    if (mapservice == "esri") {
+      ras3 <- basemaps::basemap_stars(ext = ext, map_service = "esri",
+                                      map_type = "world_imagery")
+      fn <- file.path(fp, sprintf("%s_%s.tif", mapservice, file_name))
+      fn_list <- fn
+      stars::write_stars(ras3, dsn = fn, type = "Byte")
+    } else if (mapservice == "osm") {
+      ras4 <- basemaps::basemap_stars(ext = ext, map_service = "osm",
+                                      map_type = "streets")
+      fn <- file.path(fp, sprintf("%s_%s.tif", mapservice, file_name))
+      fn_list <- fn
+      stars::write_stars(ras4, dsn = fn, type = "Byte")
+    } else if (mapservice == "mapbox") {
+      ras6 <- basemaps::basemap_stars(ext = ext, map_service = "mapbox",
+                                      force = FALSE, map_type = "hybrid",
+                                      map_token = key)
+      fn <- file.path(fp, sprintf("%s_%s.tif", mapservice, file_name))
+      fn_list <- fn
+      stars::write_stars(ras6, dsn = fn, type = "Byte")
+    } else if (mapservice == "bing") {
+      ## Bing REST API
+      ma      <- paste(ext["ymin"], ext["xmin"], ext["ymax"], ext["xmax"], sep = ",")
+      res_px  <- 700
+      url     <- httr::parse_url("https://dev.virtualearth.net")
+      url$path <- "/REST/v1/Imagery/Map/AerialWithLabels"
 
-    if(drawPolygon) {
-      ## No Polygon on BING
-      #coords<-as.data.frame(st_coordinates(st_as_sfc(st_bbox(st_transform(shape, 4326)))))
-      coords<-as.data.frame(st_coordinates(((st_transform(shape, 4326)))))
+      if (drawPolygon) {
+        coords     <- as.data.frame(sf::st_coordinates(sf::st_transform(shape, 4326)))
+        coords$pair <- paste(coords$Y, coords$X, sep = ",")
+        coords_str  <- paste(coords$pair, collapse = "_")
+        colorl      <- "FFF5140C"
+        ls          <- 3
+        colora      <- "00009900"
+        polyParameter <- paste("p", colora, colorl, ls, sep = ",")
+        polyParameter <- paste(polyParameter, coords_str, sep = ";")
+        url$query   <- list(key     = key,
+                            mapArea = utils::URLencode(ma),
+                            mapSize = paste(res_px, res_px, sep = ","),
+                            format  = "png",
+                            dc      = polyParameter)
+      } else {
+        url$query <- list(key     = key,
+                          mapArea = utils::URLencode(ma),
+                          mapSize = paste(res_px, res_px, sep = ","),
+                          format  = "png")
+      }
 
-      coords$pair<-paste(coords$Y, coords$X, sep = ",")
-      coords_str<-paste(coords$pair, collapse = "_")
-      colorl<-"FFF5140C"
-      ls<-3
-      colora<-"00009900"
-      polyParameter<-paste("p", colora, colorl, ls, sep = ",")
-      polyParameter<-paste(polyParameter, coords_str, sep = ";")
-      url$query<-list(key = key,
-                      mapArea = utils::URLencode(ma),
-                      mapSize = paste(res_px,res_px, sep = ","),
-                      format = "png",
-                      dc = polyParameter)
-
-    } else {
-      ## No Polygon on BING
-      url$query<-list(key = key,
-                      mapArea = utils::URLencode(ma),
-                      mapSize = paste(res_px,res_px, sep = ","),
-                      format = "png")
+      httr_string <- httr::build_url(url = url)
+      tf          <- tempfile(fileext = ".png")
+      map2        <- httr::GET(httr_string)
+      writeBin(httr::content(map2, "raw", type = "image"), tf)
+      magick::image_write(
+        magick::image_convert(magick::image_read(tf), format = "PNG24"), tf
+      )
+      ras7 <- stars::read_stars(tf); unlink(tf)
+      ras7 <- stars::st_set_bbox(ras7, value = ext)
+      fn   <- file.path(fp, sprintf("%s_%s.tif", mapservice, file_name))
+      fn_list <- fn
+      stars::write_stars(ras7, dsn = fn, driver = "GTiff", type = "Byte")
     }
-
-    ## 3.3.2 Build and Request
-    httr_string<-build_url(url = url)
-    tf<-tempfile(fileext = ".png")
-    ## 3.3. GET
-    #tf<-"./data/bingtest/checkdraw.png"
-    map2<-GET(httr_string)
-    writeBin(content(map2, "raw", type = "image"), tf)
-    magick::image_write(magick::image_convert(magick::image_read(tf),
-                              format = "PNG24"), tf)
-    ras7<-stars::read_stars(tf); unlink(tf)
-    ras7<-st_set_bbox(ras7, value = ext)
-    write_stars(ras7, dsn = "./data/bingtest/bing9236_569_subcell.tif", driver = "GTiff")
-
 
   }
 

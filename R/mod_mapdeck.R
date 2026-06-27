@@ -11,6 +11,18 @@
 #' @import mapdeck
 #'
 #'
+
+## Inline replacement for RgoogleMaps::MaxZoom().
+## Computes the highest zoom level at which the given lat/lon span fits in a
+## standard 256-px tile. Formula mirrors the original RgoogleMaps implementation.
+.max_zoom_from_bbox <- function(lat_range, lon_range) {
+  lat_span <- abs(diff(range(lat_range)))
+  lon_span <- abs(diff(range(lon_range)))
+  span      <- max(lat_span, lon_span)
+  if (span <= 0) return(18L)
+  as.integer(floor(log2(360 / span)))
+}
+
 mapModuleUI <- function(id, width = "100%", height = "880px"){
   # Create a namespace function using the provided id
   ns <- NS(id)
@@ -118,7 +130,7 @@ mapModuleSvr <- function(id,
           loc<-loc_center(Boundaries)
           ## calculate zoom
           bb<-st_bbox(Boundaries)
-          zoom<-RgoogleMaps::MaxZoom(bb[c(2,4)], bb[c(1,3)])
+          zoom<-.max_zoom_from_bbox(bb[c(2,4)], bb[c(1,3)])
           ############################################
           mapdeck_update(map_id = session$ns("baseMap1")) %>%
             clear_polygon(layer_id = layer_id_pols) %>%
@@ -155,7 +167,7 @@ mapModuleSvr <- function(id,
           loc<-loc_center(Boundaries)
           ## calculate zoom
           bb<-st_bbox(Boundaries)
-          zoom<-RgoogleMaps::MaxZoom(bb[c(2,4)], bb[c(1,3)])
+          zoom<-.max_zoom_from_bbox(bb[c(2,4)], bb[c(1,3)])
           ############################################
           mapdeck_update(map_id = session$ns("baseMap1")) %>%
             clear_polygon(layer_id = layer_id_pols) %>%
@@ -234,7 +246,7 @@ mapModuleSvr <- function(id,
       loc<-loc_center(Boundaries)
       ## calculate zoom
       bb<-st_bbox(Boundaries)
-      zoom<-RgoogleMaps::MaxZoom(bb[c(2,4)], bb[c(1,3)])
+      zoom<-.max_zoom_from_bbox(bb[c(2,4)], bb[c(1,3)])
       ############################################
       mapdeck_update(map_id = session$ns("baseMap1")) %>%
         mapdeck_view(pitch = 60, zoom = zoom.transition, location = loc,
@@ -255,7 +267,7 @@ mapModuleSvr <- function(id,
       loc<-loc_center(pts)
       ## calculate zoom
       bb<-st_bbox(pts)
-      zoom<-RgoogleMaps::MaxZoom(bb[c(2,4)], bb[c(1,3)])
+      zoom<-.max_zoom_from_bbox(bb[c(2,4)], bb[c(1,3)])
       ############################################
       mapdeck_update(map_id = session$ns("baseMap1")) %>%
         add_scatterplot(pts,
@@ -309,7 +321,7 @@ mapModuleSvr <- function(id,
       loc<-loc_center(pts)
       ## calculate zoom
       bb<-st_bbox(pts)
-      zoom<-RgoogleMaps::MaxZoom(bb[c(2,4)], bb[c(1,3)])
+      zoom<-.max_zoom_from_bbox(bb[c(2,4)], bb[c(1,3)])
       ############################################
       mapdeck_update(map_id = session$ns("baseMap1")) %>%
         #update_style (style = mapdeck_style("dark")) %>%
@@ -346,7 +358,7 @@ mapModuleSvr <- function(id,
       loc<-loc_center(pts)
       ## calculate zoom
       bb<-st_bbox(pts)
-      zoom<-RgoogleMaps::MaxZoom(bb[c(2,4)], bb[c(1,3)])
+      zoom<-.max_zoom_from_bbox(bb[c(2,4)], bb[c(1,3)])
       ############################################
       mapdeck_update(map_id = session$ns("baseMap1")) %>%
         #update_style (style = mapdeck_style("dark")) %>%

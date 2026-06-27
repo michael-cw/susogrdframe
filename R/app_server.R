@@ -21,10 +21,9 @@
 #' @import sf
 #' @import stars
 #' @import data.table
-#' @importFrom raster crop res writeRaster spplot isLonLat getValues raster
-#'   crs extent
+#' @importFrom terra crop ext values xFromCell yFromCell rasterize project crs
+#'   is.lonlat vect ncol nrow xmin xmax ymin ymax res plot
 #' @importFrom shinycssloaders withSpinner
-#' @importFrom fasterize fasterize
 #' @importFrom rlang .data
 #' @importFrom vantorr get_maxar_token get_maxar_wms_basemap
 #'
@@ -343,7 +342,7 @@ app_server <- function(input, output, session) {
       incProgress(0.4, "Processing ...")
 
       shiny::validate(need(
-        try(pop_raster <- raster::crop(pop_raster, raster::extent(shp_for_crop))),
+        try(pop_raster <- terra::crop(pop_raster, terra::ext(shp_for_crop))),
         message = "Files do not overlap!"
       ))
 
@@ -376,8 +375,7 @@ app_server <- function(input, output, session) {
   ## 5.2  Render raster preview plot
   output$rasterPlot <- renderPlot({
     req(DBraster())
-    raster::spplot(DBraster(),
-                   col.regions = grDevices::topo.colors(100, alpha = 0.7))
+    terra::plot(DBraster(), col = grDevices::topo.colors(100, alpha = 0.7))
   })
 
   ## 5.3  Close any modal
@@ -473,30 +471,83 @@ app_server <- function(input, output, session) {
     )
 
     ## Subset stratum and crop raster
+    ## 1. For cropping use terra, but transform back then project area to utm
+    ## function for utm transform from spatsample
+    project_to_utm<-function(shp) {
+      ## 1. get zone
+      maxLong<-st_bbox(shp)[3]
+      long2UTM <- function(long=maxLong) {
+        (floor((long + 180)/6) %% 60) + 1
+      }
+      ## 2. Create CRS string
+      utmZone<-long2UTM()
+      epsg<-ifelse(st_bbox(shp)[4]<=0, sprintf("327%2d", utmZone) ,sprintf("326%2d", utmZone))
+      crs=(paste0("+proj=utm +south +zone=", utmZone, " +ellps=WGS84 +towgs84=0,0,0, +init=epsg:",epsg))
+      ## 3. Transform
+      shp<-tryCatch(
+        {shp %>% st_transform(crs)},
+        error = function(e) {shp %>% st_transform(as.numeric(epsg))})
+      return(shp)
+    }
+    
+    
+    long2UTM <- function(long=maxLong) {
+      (floor((long + 180)/6) %% 60) + 1
+    }
+    ###########################################
+    crsOld <- st_crs(sp_grd_strat_poly)
+    
+    ## 2. reproject raster to metered UTM (zone is based on location)--> required for GRIDID
+    sp_grd_strat_poly <- project_to_utm(sp_grd_strat_poly)
+    pop_raster <- terra::project(pop_raster, terra::crs(sp_grd_strat_poly))
+    #sp_grd_strat_poly <- st_transform(sp_grd_strat_poly, terra::crs(pop_raster))
+    # CHECKpoly<<-sp_grd_strat_poly
+    # CHECKras<<-pop_raster
     tmp_poly     <- sp_grd_strat_poly |> dplyr::filter(.data[[stratvar]] == name_sel)
-    tmp_ras      <- raster::crop(pop_raster, raster::extent(tmp_poly))
-    tmp_poly_ras <- fasterize::fasterize(tmp_poly, tmp_ras, fun = "max")
-    tmp_poly_ras[] <- tmp_poly_ras[] * tmp_ras[]
+    tmp_ras      <- terra::crop(pop_raster, terra::ext(tmp_poly))
+    
+    # tmp_ras <- terra::project(tmp_ras, terra::crs(tmp_poly))
+    ## 3. Crop raster to polygon
+    tmp_ras <- terra::crop(tmp_ras, tmp_poly)
+    tmp_poly_ras <- terra::rasterize(terra::vect(tmp_poly), tmp_ras, fun = "max")
+    terra::values(tmp_poly_ras) <- terra::values(tmp_poly_ras) * terra::values(tmp_ras)
 
     ## Convert to points and assign grid IDs
-    if(raster::isLonLat(tmp_poly_ras)) {
-      bb_tmp <- st_bbox(tmp_poly)
-      utmZone <- long2UTM(bb_tmp[3])
-      epsg <- ifelse(
-        bb_tmp[4] <= 0,
-        sprintf("327%02d", utmZone),
-        sprintf("326%02d", utmZone)
-      )
-      epsg<-sp::CRS(SRS_string = paste0("EPSG:", epsg))
-      tmp_poly_ras <- raster::projectRaster(tmp_poly_ras, crs = raster::crs(epsg))
-      tmp_ras <- raster::projectRaster(tmp_ras, crs = raster::crs(epsg))
-    }
-    ras_points <- data.table(raster::getValues(tmp_poly_ras))
-    ras_points[, CID   := seq_len(.N)]
-    ras_points[, X     := floor(raster::xFromCell(tmp_poly_ras, seq_len(.N)) / 1000)]
-    ras_points[, Y     := floor(raster::yFromCell(tmp_poly_ras, seq_len(.N)) / 1000)]
+    # if (terra::is.lonlat(tmp_poly_ras)) {
+    #   bb_tmp   <- sf::st_bbox(tmp_poly)
+    #   utmZone  <- long2UTM(bb_tmp[3])
+    #   epsg_str <- ifelse(
+    #     bb_tmp[4] <= 0,
+    #     sprintf("327%02d", utmZone),
+    #     sprintf("326%02d", utmZone)
+    #   )
+    #   target_crs   <- paste0("EPSG:", epsg_str)
+    #   tmp_poly_ras <- terra::project(tmp_poly_ras, target_crs)
+    #   tmp_ras      <- terra::project(tmp_ras,      target_crs)
+    # }
+    # ras_points <- data.table(terra::values(tmp_poly_ras, mat = FALSE))
+    # ras_points[, CID    := seq_len(.N)]
+    # ras_points[, X      := floor(terra::xFromCell(tmp_poly_ras, seq_len(.N)) / 1000)]
+    # ras_points[, Y      := floor(terra::yFromCell(tmp_poly_ras, seq_len(.N)) / 1000)]
+    # ras_points[, GRIDID := sprintf("Lat%dLon%d", Y, X)]
+    # ras_points[, c("X", "Y") := NULL]
+    # ras_points <- copy(ras_points[!is.na(V1)])
+    
+    ras_points <- data.table::data.table(terra::values(tmp_poly_ras))
+    xres <- terra::xres(tmp_poly_ras)
+    yres <- terra::yres(tmp_poly_ras)
+    
+    # Get coordinates using terra functions
+    coords <- terra::xyFromCell(tmp_poly_ras, 1:terra::ncell(tmp_poly_ras))
+    ras_points[, CID := 1:.N]
+    ras_points[, X := floor(coords[, 1] / xres)]
+    ras_points[, Y := floor(coords[, 2] / yres)]
     ras_points[, GRIDID := sprintf("Lat%dLon%d", Y, X)]
-    ras_points[, c("X", "Y") := NULL]
+    ras_points[, X := NULL][, Y := NULL]
+    ras_points <- copy(ras_points[!is.na(layer)])
+    ras_points[, stratum_numeric := tmp_poly$stratum_numeric]
+    ras_points[, TOTPOP := ceiling(sum(layer))]
+    data.table::setnames(ras_points, "layer", "V1")
     ras_points <- copy(ras_points[!is.na(V1)])
 
     CELLdf(ras_points)
@@ -516,26 +567,22 @@ app_server <- function(input, output, session) {
 
     ## Build grid shape for the map
     tmp_samp_ras <- terra::rast(
-      nrows      = nrow(tmp_ras),
-      ncols      = ncol(tmp_ras),
-      xmin       = raster::xmin(tmp_ras),
-      xmax       = raster::xmax(tmp_ras),
-      ymin       = raster::ymin(tmp_ras),
-      ymax       = raster::ymax(tmp_ras),
-      resolution = raster::res(tmp_ras)[1],
-      crs        = raster::projection(tmp_ras)
+      nrows      = terra::nrow(tmp_ras),
+      ncols      = terra::ncol(tmp_ras),
+      xmin       = terra::xmin(tmp_ras),
+      xmax       = terra::xmax(tmp_ras),
+      ymin       = terra::ymin(tmp_ras),
+      ymax       = terra::ymax(tmp_ras),
+      resolution = terra::res(tmp_ras)[1],
+      crs        = terra::crs(tmp_ras)
     )
-    tmp_samp_ras[]              <- NA
-    tmp_samp_ras                <- raster::raster(tmp_samp_ras)
-    raster::projection(tmp_samp_ras) <- raster::projection(tmp_ras)
-    tmp_samp_ras[ras_points$CID]    <- tmp_ras[ras_points$CID]
+    ## Populate only the cells present in the stratum
+    samp_vals <- rep(NA_real_, terra::ncell(tmp_samp_ras))
+    samp_vals[ras_points$CID] <- terra::values(tmp_ras, mat = FALSE)[ras_points$CID]
+    terra::values(tmp_samp_ras) <- samp_vals
 
     ## sf polygon grid
     pop_raster_shp_samp         <- sf::st_as_sf(stars::st_as_stars(tmp_samp_ras))
-    CHECKraspoints<<-ras_points
-    CHECKpop_raster_shp_samp<<-pop_raster_shp_samp
-    CHECKtmp_samp_ras<<-tmp_samp_ras
-    
     pop_raster_shp_samp$GRIDID  <- ras_points$GRIDID
     pop_raster_shp_samp$Pop     <- ras_points$V1
 
@@ -623,7 +670,6 @@ app_server <- function(input, output, session) {
           driver       = "ESRI Shapefile",
           quiet        = TRUE
         )
-        fs <- c(fs, list.files(DSN, full.names = TRUE))
 
       } else {
         ## Multiple polygons (one per cell)
@@ -648,19 +694,23 @@ app_server <- function(input, output, session) {
             quiet        = TRUE
           )
         }
+      }
 
-        if (!is.null(TPKpath())) {
-          tpk_path <- file.path(TPKpath())
-          fs <- c(fs,
-                  list.files(DSN,      full.names = TRUE),
-                  list.files(tpk_path, pattern = "\\.tif$", full.names = TRUE))
-          TPKpath(NULL)
-        } else {
-          fs <- c(fs, list.files(DSN, full.names = TRUE))
-        }
+      ## --- Assemble file list for zip ---
+      ## Always include DSN files (coordinate tab + shapefiles)
+      fs <- c(fs, list.files(DSN, full.names = TRUE))
+
+      ## Append basemap tiles (.tif / .tpk) from the tile output folder,
+      ## regardless of whether split_segments was used.
+      if (!is.null(TPKpath())) {
+        tpk_path <- TPKpath()
+        fs <- c(fs, list.files(tpk_path, pattern = "\\.(tif|tpk)$",
+                               full.names = TRUE))
+        TPKpath(NULL)
       }
 
       zip::zip(zipfile = file, files = fs, mode = "cherry-pick")
+
     },
     contentType = "application/zip"
   )
@@ -807,10 +857,18 @@ app_server <- function(input, output, session) {
 
   observeEvent(input$generateReportInt, {
 
-    ## Clear any old tile files from previous run
-    fpp           <- file.path(".", golem::get_golem_options("filepath"))
-    old_tif_files <- list.files(fpp, full.names = TRUE, pattern = "\\.tif$")
-    if (length(old_tif_files) > 0L) file.remove(old_tif_files)
+    ## Resolve basemap output directory
+    ##   - If basemap_local_dir is set: use a persistent local cache (never cleared).
+    ##   - Otherwise: use the session-scoped filepath option and clear stale tiles.
+    basemap_local_dir <- golem::get_golem_options("basemap_local_dir")
+    if (!is.null(basemap_local_dir) && nzchar(basemap_local_dir)) {
+      fpp <- basemap_local_dir
+      if (!dir.exists(fpp)) dir.create(fpp, recursive = TRUE)
+    } else {
+      fpp           <- file.path(".", golem::get_golem_options("filepath"))
+      old_tif_files <- list.files(fpp, full.names = TRUE, pattern = "\\.tif$")
+      if (length(old_tif_files) > 0L) file.remove(old_tif_files)
+    }
 
     samp_raster_shp <- DBraster_1()
 

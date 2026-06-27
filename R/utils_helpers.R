@@ -4,6 +4,7 @@
 #'   and cross-cutting raster helpers used throughout the application.
 #'
 #' @importFrom magrittr %>%
+#' @importFrom terra values rast ncell
 #' @noRd
 
 ## Global Variables with no visible binding, i.e data.table, dplyr etc.
@@ -119,33 +120,30 @@ long2UTM <- function(long=NULL) {
 
 
 ################################
-## RASTER FUNCTIONS
+## RASTER FUNCTIONS (terra-based)
 
-## 1. Fast raster replace NA (attention Memory!)
-ras_NA_to_0<-function(rf=NULL) {
-  rfDF <- raster::values(rf)
-  rfDF[is.na(rfDF)]<-0
-  raster::values(rf)<-rfDF
-  rfProj<-raster::projection(rf)
+## 1. Fast raster replace NA
+ras_NA_to_0 <- function(rf = NULL) {
+  rfDF <- terra::values(rf, mat = FALSE)
+  rfDF[is.na(rfDF)] <- 0
+  terra::values(rf) <- rfDF
   return(rf)
 }
 
-ras_strat_kmeans<-function(rf=NULL, n_strata=10) {
-  rstDF <- raster::values(rf)
-  km<-stats::kmeans(rstDF, centers = n_strata, iter.max = 50)
-  kmClust <- vector(mode = "integer", length = raster::ncell(rf))
-  kmClust<- km$cluster
-  tmpRstKM <- raster(rf[[1]])
-  raster::values(tmpRstKM) <- kmClust
+ras_strat_kmeans <- function(rf = NULL, n_strata = 10) {
+  rstDF   <- terra::values(rf, mat = FALSE)
+  km      <- stats::kmeans(rstDF, centers = n_strata, iter.max = 50)
+  kmClust <- km$cluster
+  tmpRstKM <- terra::rast(rf)
+  terra::values(tmpRstKM) <- kmClust
   return(tmpRstKM)
 }
 
-ras_strat_clara<-function(rf=NULL, n_strata=10) {
-  rstDF <- raster::values(rf)
-  km<-cluster::clara(rstDF, k = n_strata, metric = "manhattan")
-  kmClust <- vector(mode = "integer", length = raster::ncell(rf))
-  kmClust<- km$cluster
-  tmpRstKM <- raster(rf[[1]])
-  raster::values(tmpRstKM) <- kmClust
+ras_strat_clara <- function(rf = NULL, n_strata = 10) {
+  rstDF   <- terra::values(rf, mat = FALSE)
+  km      <- cluster::clara(rstDF, k = n_strata, metric = "manhattan")
+  kmClust <- km$cluster
+  tmpRstKM <- terra::rast(rf)
+  terra::values(tmpRstKM) <- kmClust
   return(tmpRstKM)
 }

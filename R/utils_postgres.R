@@ -338,7 +338,8 @@ writeRAStoDB <- function(object = NULL, dbname = NULL, host = NULL,
 #'
 #' @description
 #' Retrieves a raster from the PostGIS database.  When `listTables = TRUE`
-#' the raster catalogue is returned instead.
+#' the raster catalogue is returned instead.  The raster is always returned
+#' as a `terra` `SpatRaster` (coerced via `terra::rast()`).
 #'
 #' @param dbname Character — PostgreSQL database name.
 #' @param host Character — PostgreSQL host address.
@@ -347,7 +348,7 @@ writeRAStoDB <- function(object = NULL, dbname = NULL, host = NULL,
 #' @param fn Character — table name to read.
 #' @param listTables Logical — return the raster catalogue instead of data.
 #'
-#' @return When `listTables = FALSE`: a `RasterLayer` object.
+#' @return When `listTables = FALSE`: a `terra` `SpatRaster` object.
 #'   When `listTables = TRUE`: a `data.table` of raster tables.
 #'
 #' @noRd
@@ -367,7 +368,7 @@ readRASfromDB <- function(dbname = NULL, host = NULL,
 
   if (!listTables) {
     if (is.null(fn)) stop("No layer name provided.")
-    rpostgis::pgGetRast(conn = con, name = fn, bands = TRUE)
+    terra::rast(rpostgis::pgGetRast(conn = con, name = fn, bands = TRUE))
   } else {
     all_tables <- data.table::data.table(
       rpostgis::pgListRast(conn = con), key = "schema_name"

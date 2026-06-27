@@ -15,6 +15,7 @@ helpers that read/write ESRI Shapefiles and GeoTIFF files.
 <local_dir>/
   shapefiles/   # ESRI Shapefiles (.shp + sidecar files)
   rasterfiles/  # GeoTIFF rasters  (.tif)
+  basemaps/     # Downloaded basemap GeoTIFFs (persistent cache)
 ```
 }
 \keyword{internal}

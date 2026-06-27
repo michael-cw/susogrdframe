@@ -12,6 +12,7 @@
 #' <local_dir>/
 #'   shapefiles/   # ESRI Shapefiles (.shp + sidecar files)
 #'   rasterfiles/  # GeoTIFF rasters  (.tif)
+#'   basemaps/     # Downloaded basemap GeoTIFFs (persistent cache)
 #' ```
 #'
 #' @name utils_storage
@@ -53,17 +54,20 @@ get_storage_backend <- function() {
     if (is.null(local_dir) || !nzchar(local_dir)) {
       stop("data_backend = 'local' requires a non-empty local_dir option.")
     }
-    ## Ensure the two sub-directories exist
-    shp_dir <- file.path(local_dir, "shapefiles")
-    ras_dir <- file.path(local_dir, "rasterfiles")
-    if (!dir.exists(shp_dir)) dir.create(shp_dir, recursive = TRUE)
-    if (!dir.exists(ras_dir)) dir.create(ras_dir, recursive = TRUE)
+    ## Ensure the three sub-directories exist
+    shp_dir     <- file.path(local_dir, "shapefiles")
+    ras_dir     <- file.path(local_dir, "rasterfiles")
+    basemap_dir <- file.path(local_dir, "basemaps")
+    if (!dir.exists(shp_dir))     dir.create(shp_dir,     recursive = TRUE)
+    if (!dir.exists(ras_dir))     dir.create(ras_dir,     recursive = TRUE)
+    if (!dir.exists(basemap_dir)) dir.create(basemap_dir, recursive = TRUE)
 
     list(
-      type      = "local",
-      local_dir = local_dir,
-      shp_dir   = shp_dir,
-      ras_dir   = ras_dir
+      type        = "local",
+      local_dir   = local_dir,
+      shp_dir     = shp_dir,
+      ras_dir     = ras_dir,
+      basemap_dir = basemap_dir
     )
   } else {
     list(
@@ -236,14 +240,14 @@ list_raster_layers <- function(backend) {
 #' @description
 #' Loads a single raster dataset from the active backend.
 #'
-#' * **postgres**: uses `rpostgis::pgGetRast`.
-#' * **local**: reads `<local_dir>/rasterfiles/<fn>.tif` via `raster::raster`.
+#' * **postgres**: uses `rpostgis::pgGetRast`; result is coerced to a
+#'   `terra` `SpatRaster` via `terra::rast()`.
+#' * **local**: reads `<local_dir>/rasterfiles/<fn>.tif` via `terra::rast`.
 #'
 #' @param fn Character scalar — the table / file name (without extension).
 #' @param backend A backend config list produced by `get_storage_backend()`.
 #'
-#' @return A `RasterLayer` object (from the `raster` package) for compatibility
-#'   with the existing processing pipeline.
+#' @return A `terra` `SpatRaster` object.
 #'
 #' @noRd
 read_raster_layer <- function(fn, backend) {
@@ -252,7 +256,7 @@ read_raster_layer <- function(fn, backend) {
     if (!file.exists(tif_path)) {
       stop(sprintf("GeoTIFF not found: %s", tif_path))
     }
-    raster::raster(tif_path)
+    terra::rast(tif_path)
   } else {
     readRASfromDB(
       fn       = fn,
@@ -270,10 +274,12 @@ read_raster_layer <- function(fn, backend) {
 #' @description
 #' Persists a raster dataset and returns an updated listing.
 #'
-#' * **postgres**: uses `rpostgis::pgWriteRast`.
-#' * **local**: writes a GeoTIFF to `<local_dir>/rasterfiles/<fn>.tif`.
+#' * **postgres**: uses `rpostgis::pgWriteRast` (supports `terra` `SpatRaster`
+#'   as of rpostgis >= 1.5.0).
+#' * **local**: writes a GeoTIFF to `<local_dir>/rasterfiles/<fn>.tif` via
+#'   `terra::writeRaster`.
 #'
-#' @param object A `RasterLayer` (or `terra` `SpatRaster`) to write.
+#' @param object A `terra` `SpatRaster` to write.
 #' @param fn Character scalar — the desired table / file name (without
 #'   extension).
 #' @param backend A backend config list produced by `get_storage_backend()`.
@@ -285,8 +291,8 @@ read_raster_layer <- function(fn, backend) {
 write_raster_layer <- function(object, fn, backend) {
   if (backend$type == "local") {
     out_path <- file.path(backend$ras_dir, paste0(fn, ".tif"))
-    raster::writeRaster(object, filename = out_path,
-                        format = "GTiff", overwrite = TRUE)
+    terra::writeRaster(object, filename = out_path,
+                       filetype = "GTiff", overwrite = TRUE)
     list_raster_layers(backend)
   } else {
     writeRAStoDB(

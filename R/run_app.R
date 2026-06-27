@@ -39,6 +39,14 @@
 #' @param filepath Character scalar — name of the working sub-directory used
 #'   to cache intermediate basemap files (e.g.\ static tiles).  Created in the
 #'   current working directory if it does not exist.  Default: `"susomaps"`.
+#'   Only used when `basemap_local_dir` is not set.
+#' @param basemap_local_dir Character scalar — absolute path to a persistent
+#'   local directory where downloaded basemap GeoTIFF files are cached across
+#'   sessions.  The directory is created automatically if it does not exist.
+#'   Defaults to `tools::R_user_dir("susogrdframe", which = "data")`, an
+#'   OS-appropriate user data directory (the same strategy used by
+#'   `susospatsample`).  Set to `NULL` to fall back to the session-scoped
+#'   `filepath` directory (old behaviour, tiles are cleared each session).
 #' @param susomapcrs Integer — EPSG code of the coordinate reference system
 #'   used for the Survey Solutions fieldwork maps.  Must be a CRS accepted by
 #'   Survey Solutions.  Default: `3857` (Web Mercator).
@@ -84,6 +92,7 @@ run_app <- function(
   pgpass           = NULL,
   pgdbname         = "spatsampdata",
   filepath         = "susomaps",
+  basemap_local_dir = tools::R_user_dir("susogrdframe", which = "data"),
   susomapcrs       = 3857L,
   onStart          = NULL,
   options          = list(),
@@ -109,6 +118,15 @@ run_app <- function(
     }
   }
 
+  ## Resolve and (if needed) create the persistent basemap cache directory
+  if (!is.null(basemap_local_dir) && nzchar(basemap_local_dir)) {
+    basemap_local_dir <- normalizePath(basemap_local_dir, mustWork = FALSE)
+    if (!dir.exists(basemap_local_dir)) {
+      message("Creating basemap cache directory: ", basemap_local_dir)
+      dir.create(basemap_local_dir, recursive = TRUE)
+    }
+  }
+
   with_golem_options(
     app = shinyApp(
       ui                = app_ui,
@@ -119,16 +137,17 @@ run_app <- function(
       uiPattern         = uiPattern
     ),
     golem_opts = list(
-      KEY          = mapboxkey,
-      bgmaptype    = bgmaptype,
-      data_backend = data_backend,
-      local_dir    = local_dir,
-      pghost       = pghost,
-      pguser       = pguser,
-      pgpass       = pgpass,
-      pgdbname     = pgdbname,
-      filepath     = filepath,
-      susomapcrs   = susomapcrs
+      KEY               = mapboxkey,
+      bgmaptype         = bgmaptype,
+      data_backend      = data_backend,
+      local_dir         = local_dir,
+      pghost            = pghost,
+      pguser            = pguser,
+      pgpass            = pgpass,
+      pgdbname          = pgdbname,
+      filepath          = filepath,
+      basemap_local_dir = basemap_local_dir,
+      susomapcrs        = susomapcrs
     )
   )
 }

@@ -14,6 +14,7 @@ run_app(
   pgpass = NULL,
   pgdbname = "spatsampdata",
   filepath = "susomaps",
+  basemap_local_dir = tools::R_user_dir("susogrdframe", which = "data"),
   susomapcrs = 3857L,
   onStart = NULL,
   options = list(),
@@ -55,7 +56,16 @@ Ignored when `data_backend = "local"`.}
 
 \item{filepath}{Character scalar — name of the working sub-directory used
 to cache intermediate basemap files (e.g.\ static tiles).  Created in the
-current working directory if it does not exist.  Default: `"susomaps"`.}
+current working directory if it does not exist.  Default: `"susomaps"`.
+Only used when `basemap_local_dir` is not set.}
+
+\item{basemap_local_dir}{Character scalar — absolute path to a persistent
+local directory where downloaded basemap GeoTIFF files are cached across
+sessions.  The directory is created automatically if it does not exist.
+Defaults to `tools::R_user_dir("susogrdframe", which = "data")`, an
+OS-appropriate user data directory (the same strategy used by
+`susospatsample`).  Set to `NULL` to fall back to the session-scoped
+`filepath` directory (old behaviour, tiles are cleared each session).}
 
 \item{susomapcrs}{Integer — EPSG code of the coordinate reference system
 used for the Survey Solutions fieldwork maps.  Must be a CRS accepted by
