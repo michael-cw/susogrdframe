@@ -23,18 +23,15 @@
   as.integer(floor(log2(360 / span)))
 }
 
-mapModuleUI <- function(id, width = "100%", height = "880px"){
-  # Create a namespace function using the provided id
+mapModuleUI <- function(id, width = "100%", height = "80vh") {
   ns <- NS(id)
-
   tagList(
     fluidRow(
-      shinycssloaders::withSpinner(
-        mapdeckOutput(ns("baseMap1"), width = width, height = height)
-      )
+      mapdeckOutput(ns("baseMap1"), width = width, height = height)
     )
   )
 }
+
 
 #' mapdeck Server Functions
 #'
@@ -55,7 +52,7 @@ mapModuleSvr <- function(id,
                          polyId = reactive(NULL),
                          z_var = reactive(NULL),
                          maptype = "satellite",
-                         fillcolor = NULL,
+                         fillcolor = "#0000FF",
                          fill_opacity = 0.6,
                          stroke_colour = "#FF0000",
                          stroke_from_opacity = 0.6,
@@ -79,7 +76,8 @@ mapModuleSvr <- function(id,
                            polygon = 2000,
                            fill_colour = 2000,
                            stroke_width = 2000,
-                           elevation = 2000)){
+                           elevation = 2000)
+                         ){
   moduleServer(id, function(input, output, session){
     ########################################
     ## 1. Plot the basemap --> hidden for start-up in UI
@@ -112,7 +110,7 @@ mapModuleSvr <- function(id,
             add_polygon(data = Boundaries,
                         stroke_colour = stroke_colour,
                         stroke_width = 10,
-                        fill_colour = fillcolor,
+                        fill_colour = if (!is.null(fillcolor)) fillcolor else "#00000000",
                         fill_opacity = fill_opacity,
                         layer_id  = layer_id_pols,
                         update_view = T,

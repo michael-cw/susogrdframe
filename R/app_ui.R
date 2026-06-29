@@ -522,7 +522,7 @@ app_ui <- function(request) {
             fluidRow(
               ## Interactive map (mapdeck)
               column(10,
-                     mapModuleUI("baseMap", height = "730px")
+                     mapModuleUI("baseMap", height = "80vh")
               ),
               ## Statistics + download column
               column(2,
